@@ -17,6 +17,6 @@ public class SupplyOrderingApplication {
         // Входной адаптер
         var consoleUI = new ConsoleUserInterface(service);
 
-        consoleUI.runDemo();
+        consoleUI.start();
     }
 }

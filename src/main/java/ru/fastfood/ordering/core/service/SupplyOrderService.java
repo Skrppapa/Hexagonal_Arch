@@ -5,6 +5,7 @@ import ru.fastfood.ordering.core.domain.*;
 import ru.fastfood.ordering.core.ports.in.SupplyOrderUseCase;
 import ru.fastfood.ordering.core.ports.out.*;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -25,31 +26,47 @@ public class SupplyOrderService implements SupplyOrderUseCase {
     }
 
     @Override
+    public List<SupplyOrder> getAllOrders() {
+        return repository.findAll();
+    }
+
+
+    @Override
     public void sendToSupplier(UUID orderId) {
         SupplyOrder order = repository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Заказ не найден: " + orderId));
+
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new IllegalStateException("Заказ уже отправлен или находится в работе!");
+        }
         order.setStatus(OrderStatus.SENT);
-        notificationService.notify(order);
         repository.save(order);
     }
 
     @Override
     public void confirmOrder(UUID orderId) {
-        SupplyOrder order = repository.findById(orderId).orElseThrow();
+        SupplyOrder order = repository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Заказ не найден: " + orderId));
+
+        if (order.getStatus() != OrderStatus.SENT) {
+            throw new IllegalStateException("Ошибка: Нельзя подтвердить заказ, который не был отправлен!");
+        }
         order.setStatus(OrderStatus.CONFIRMED);
         repository.save(order);
     }
 
     @Override
     public void receiveDelivery(DeliveryReport report) {
-        SupplyOrder order = repository.findById(report.getOrderId()).orElseThrow();
+        SupplyOrder order = repository.findById(report.getOrderId())
+                .orElseThrow(() -> new IllegalArgumentException("Заказ не найден"));
+
         if (report.isQualityCheckPassed()) {
-            order.setStatus(OrderStatus.DELIVERED);
-            System.out.println("Качество подтверждено. Продукты приняты.");
+            order.setStatus(OrderStatus.COMPLETED);
         } else {
             order.setStatus(OrderStatus.REJECTED);
-            System.out.println("Проблема с качеством: " + report.getComments());
+            order.setRejectReason(report.getComments());
         }
         repository.save(order);
     }
+
 }

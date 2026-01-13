@@ -17,5 +17,11 @@ public class InMemorySupplyOrderRepository implements SupplyOrderRepository {
     public Optional<SupplyOrder> findById(UUID id) {
         return Optional.ofNullable(database.get(id));
     }
+
+    @Override
+    public List<SupplyOrder> findAll() {
+        return new ArrayList<>(database.values());
+    }
+
 }
 
